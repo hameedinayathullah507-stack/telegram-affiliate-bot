@@ -1,4 +1,6 @@
 import os
+import threading
+from flask import Flask
 from dotenv import load_dotenv
 from urllib.parse import quote
 from google import genai
@@ -11,7 +13,24 @@ from telegram.ext import (
     filters,
 )
 
+# ---------------------------
+# Flask app for Render
+# ---------------------------
+
+flask_app = Flask(__name__)
+
+@flask_app.route("/")
+def home():
+    return "Bot is running!"
+
+def run_flask():
+    port = int(os.environ.get("PORT", 10000))
+    flask_app.run(host="0.0.0.0", port=port)
+
+# ---------------------------
 # Load environment variables
+# ---------------------------
+
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -23,7 +42,7 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 # Amazon affiliate link generator
 def create_amazon_link(product_name):
 
-    affiliate_tag = "productaffi07-21"   # Replace with your real affiliate tag
+    affiliate_tag = "productaffi07-21"
 
     search_query = quote(product_name)
 
@@ -36,7 +55,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
 
-        # AI request
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=f"""
@@ -56,16 +74,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             """
         )
 
-        # AI response text
         ai_text = response.text
 
-        # Final reply
         reply_text = "🔥 Best Recommendations\n\n"
 
-        # Split products
         products = ai_text.split("Product:")
 
-        # Loop through products
         for product in products[1:]:
 
             lines = product.strip().split("\n")
@@ -81,7 +95,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             reply_text += f"\n🛒 Buy Here:\n{amazon_link}\n\n"
 
-        # Send Telegram reply
         await update.message.reply_text(reply_text)
 
     except Exception as e:
@@ -92,13 +105,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "⚠️ Something went wrong with AI."
         )
 
-# Create Telegram app
+# ---------------------------
+# Telegram Bot
+# ---------------------------
+
 app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-# Add message handler
 app.add_handler(MessageHandler(filters.TEXT, handle_message))
 
 print("AI Affiliate Bot Running...")
 
-# Run bot
+# Run Flask in separate thread
+threading.Thread(target=run_flask).start()
+
+# Run Telegram bot
 app.run_polling()
