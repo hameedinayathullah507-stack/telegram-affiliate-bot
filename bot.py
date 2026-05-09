@@ -99,11 +99,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
 
-        print("ERROR:", e)
+        print("REAL ERROR:", e)
 
-        await update.message.reply_text(
-            "⚠️ Something went wrong with AI."
-        )
+    await update.message.reply_text(
+        "⚠️ Something went wrong with AI."
+    )
 
 # ---------------------------
 # Telegram Bot
