@@ -38,7 +38,7 @@ client = OpenAI(
 # Amazon affiliate link generator
 def create_amazon_link(product_name):
 
-    affiliate_tag = "findomo-21"
+    affiliate_tag = "productaffi07-21"
 
     search_query = quote(product_name)
 
