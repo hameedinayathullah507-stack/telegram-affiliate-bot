@@ -3,7 +3,7 @@ import threading
 from flask import Flask
 from dotenv import load_dotenv
 from urllib.parse import quote
-from google import genai
+from openai import OpenAI
 
 from telegram import Update
 from telegram.ext import (
@@ -13,10 +13,7 @@ from telegram.ext import (
     filters,
 )
 
-# ---------------------------
-# Flask app for Render
-# ---------------------------
-
+# Flask app
 flask_app = Flask(__name__)
 
 @flask_app.route("/")
@@ -27,22 +24,21 @@ def run_flask():
     port = int(os.environ.get("PORT", 10000))
     flask_app.run(host="0.0.0.0", port=port)
 
-# ---------------------------
 # Load environment variables
-# ---------------------------
-
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Gemini client
-client = genai.Client(api_key=GEMINI_API_KEY)
+# OpenRouter AI client
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.getenv("OPENROUTER_API_KEY"),
+)
 
 # Amazon affiliate link generator
 def create_amazon_link(product_name):
 
-    affiliate_tag = "productaffi07-21"
+    affiliate_tag = "findomo-21"
 
     search_query = quote(product_name)
 
@@ -55,26 +51,29 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
 
-        response = client.models.generate_content(
-            model="gemini-1.5-flash",
-            contents=f"""
-            You are a smart shopping assistant.
+        response = client.chat.completions.create(
+            model="openai/gpt-4o-mini",
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"""
+                    Suggest exactly 3 best budget-friendly products for:
+                    {user_text}
 
-            Suggest exactly 3 best budget-friendly products for:
-            {user_text}
+                    IMPORTANT:
+                    Write in this exact format:
 
-            IMPORTANT:
-            Write in this exact format:
+                    Product: product name
+                    Price: ₹price
+                    Features: short features
 
-            Product: product name
-            Price: ₹price
-            Features: short features
-
-            Only give 3 products.
-            """
+                    Only give 3 products.
+                    """
+                }
+            ]
         )
 
-        ai_text = response.text
+        ai_text = response.choices[0].message.content
 
         reply_text = "🔥 Best Recommendations\n\n"
 
@@ -101,14 +100,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         print("REAL ERROR:", e)
 
-    await update.message.reply_text(
-        "⚠️ Something went wrong with AI."
-    )
+        await update.message.reply_text(
+            "⚠️ Something went wrong with AI."
+        )
 
-# ---------------------------
-# Telegram Bot
-# ---------------------------
-
+# Telegram app
 app = ApplicationBuilder().token(BOT_TOKEN).build()
 
 app.add_handler(MessageHandler(filters.TEXT, handle_message))
